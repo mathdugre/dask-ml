@@ -118,6 +118,7 @@ class _GLM(BaseEstimator):
         warm_start=False,
         n_jobs=1,
         solver_kwargs=None,
+        alpha=1.,
     ):
         self.penalty = penalty
         self.dual = dual
@@ -134,6 +135,7 @@ class _GLM(BaseEstimator):
         self.warm_start = warm_start
         self.n_jobs = n_jobs
         self.solver_kwargs = solver_kwargs
+        self.alpha = alpha
 
     def _get_solver_kwargs(self):
         fit_kwargs = {
@@ -161,6 +163,7 @@ class _GLM(BaseEstimator):
             "newton",
             "proximal_grad",
             "gradient_descent",
+            "svd",
         }
 
         if self.solver not in solvers:
@@ -343,6 +346,58 @@ class LinearRegression(_GLM):
             R^2 of self.predict(X) wrt. y.
         """
         return r2_score(y, self.predict(X))
+
+
+class RidgeRegression(LinearRegression):
+    def __init__(
+        self,
+        alpha=1.,
+        penalty="l2",
+        dual=False,
+        tol=1e-4,
+        C=1.0,
+        fit_intercept=True,
+        intercept_scaling=1.0,
+        class_weight=None,
+        random_state=None,
+        solver="admm",
+        max_iter=100,
+        multi_class="ovr",
+        verbose=0,
+        warm_start=False,
+        n_jobs=1,
+        solver_kwargs=None,
+    ):
+        super().__init__(
+            penalty,
+            dual,
+            tol,
+            C,
+            fit_intercept,
+            intercept_scaling,
+            class_weight,
+            random_state,
+            solver,
+            max_iter,
+            multi_class,
+            verbose,
+            warm_start,
+            n_jobs,
+            solver_kwargs,
+        )
+        # fit_intercept doesn't work with the svd solver
+        self.fit_intercept = False
+        
+        self.alpha = alpha
+        if self.solver_kwargs:
+            self.solver_kwargs.update({"alpha": self.alpha})
+        else:
+            self.solver_kwargs = {"alpha": self.alpha}
+
+        ridge_solvers = ["svd"]
+        if self.solver not in ridge_solvers:
+            msg = "'solver' must be {}. Got '{}' instead".format(ridge_solvers, self.solver)
+            raise ValueError(msg)
 
 
 class PoissonRegression(_GLM):
